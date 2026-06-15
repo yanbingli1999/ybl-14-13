@@ -1,4 +1,4 @@
-import { CandyType, Station, Train, BOARD_SIZE } from '@/types';
+import { CandyType, Station, Train, BoardLayout, BOARD_SIZE } from '@/types';
 
 export const CANDY_CONFIG: Record<CandyType, { name: string; color: string; points: number; emoji: string }> = {
   strawberry: { name: '草莓糖', color: '#FF6B9D', points: 10, emoji: '🍓' },
@@ -57,6 +57,38 @@ export const INITIAL_TRAIN: Train = {
     { id: 'car-3', candyType: 'mint', capacity: 20, currentLoad: 0 },
     { id: 'car-4', candyType: 'blueberry', capacity: 20, currentLoad: 0 },
     { id: 'car-5', candyType: 'grape', capacity: 20, currentLoad: 0 },
+  ],
+};
+
+export const BOARD_LAYOUT: BoardLayout = {
+  tracks: [
+    { row: 0, col: 1, direction: 'right', targetCandyType: 'lemon' },
+    { row: 0, col: 2, direction: 'right', targetCandyType: 'lemon' },
+    { row: 0, col: 6, direction: 'left', targetCandyType: 'strawberry' },
+    { row: 0, col: 5, direction: 'left', targetCandyType: 'strawberry' },
+
+    { row: 3, col: 0, direction: 'right', targetCandyType: 'mint' },
+    { row: 3, col: 1, direction: 'right', targetCandyType: 'mint' },
+    { row: 3, col: 6, direction: 'left', targetCandyType: 'blueberry' },
+    { row: 3, col: 7, direction: 'left', targetCandyType: 'blueberry' },
+
+    { row: 7, col: 1, direction: 'right', targetCandyType: 'grape' },
+    { row: 7, col: 2, direction: 'right', targetCandyType: 'grape' },
+    { row: 7, col: 5, direction: 'left', targetCandyType: 'grape' },
+    { row: 7, col: 6, direction: 'left', targetCandyType: 'grape' },
+
+    { row: 2, col: 3, direction: 'down', targetCandyType: 'mint' },
+    { row: 5, col: 3, direction: 'down', targetCandyType: 'grape' },
+    { row: 2, col: 4, direction: 'down', targetCandyType: 'blueberry' },
+    { row: 5, col: 4, direction: 'down', targetCandyType: 'grape' },
+  ],
+  switches: [
+    { row: 0, col: 3, directions: ['right', 'down'], targetCandyTypes: ['lemon', 'mint'], currentDirectionIndex: 0 },
+    { row: 0, col: 4, directions: ['left', 'down'], targetCandyTypes: ['strawberry', 'blueberry'], currentDirectionIndex: 0 },
+    { row: 7, col: 3, directions: ['right', 'up'], targetCandyTypes: ['grape', 'mint'], currentDirectionIndex: 0 },
+    { row: 7, col: 4, directions: ['left', 'up'], targetCandyTypes: ['grape', 'blueberry'], currentDirectionIndex: 0 },
+    { row: 4, col: 3, directions: ['down', 'right'], targetCandyTypes: ['grape', 'mint'], currentDirectionIndex: 0 },
+    { row: 4, col: 4, directions: ['down', 'left'], targetCandyTypes: ['grape', 'blueberry'], currentDirectionIndex: 0 },
   ],
 };
 

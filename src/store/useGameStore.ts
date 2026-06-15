@@ -8,6 +8,8 @@ import {
   DispatchResult,
   PlayerProfile,
   AllStats,
+  SwitchCellConfig,
+  TrackBoostState,
 } from '@/types';
 import {
   createInitialBoard,
@@ -28,6 +30,14 @@ import {
 import { loadCandiesToTrain, clearTrain } from '@/engine/loadingSystem';
 import { calculateDispatchResult } from '@/engine/dispatchSystem';
 import { generateOrder } from '@/engine/contractSystem';
+import {
+  resolveTrackRouting,
+  toggleSwitchesAfterCombo,
+  updateTrackBoosts,
+  calculateBoostBonus,
+  initSwitchStates,
+  getBoostMultiplier,
+} from '@/engine/trackSystem';
 import {
   loadProfile,
   saveProfile,
@@ -56,6 +66,10 @@ interface GameStore {
   profile: PlayerProfile;
   stats: AllStats;
   showStats: boolean;
+  switchStates: SwitchCellConfig[];
+  trackBoosts: TrackBoostState[];
+  activeTrackChains: Position[][];
+  comboSinceLastSwitch: number;
 
   selectCandy: (pos: Position) => void;
   processSwap: (pos1: Position, pos2: Position) => void;
@@ -68,6 +82,8 @@ interface GameStore {
   changeStation: (stationId: string) => void;
   persist: () => void;
 }
+
+const SWITCH_TRIGGER_COMBO = 2;
 
 const useGameStore = create<GameStore>((set, get) => {
   const initialProfile = loadProfile();
@@ -90,6 +106,10 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
+    switchStates: initSwitchStates(),
+    trackBoosts: [],
+    activeTrackChains: [],
+    comboSinceLastSwitch: 0,
 
     persist: () => {
       const s = get();
@@ -146,6 +166,7 @@ const useGameStore = create<GameStore>((set, get) => {
           moves: moves - 1,
           combo: 0,
           isAnimating: true,
+          comboSinceLastSwitch: 0,
         });
 
         setTimeout(() => {
@@ -163,6 +184,7 @@ const useGameStore = create<GameStore>((set, get) => {
           moves: moves - 1,
           combo: 0,
           isAnimating: true,
+          comboSinceLastSwitch: 0,
         });
 
         setTimeout(() => {
@@ -183,6 +205,11 @@ const useGameStore = create<GameStore>((set, get) => {
       let totalCombo = 0;
       let totalScore = 0;
       let allMatches: MatchResult[] = [];
+      let currentSwitches = get().switchStates;
+      let currentBoosts = get().trackBoosts;
+      let totalExtraLoading: Record<string, number> = {};
+      let allTrackChains: Position[][] = [];
+      let localComboSinceSwitch = get().comboSinceLastSwitch;
 
       const processOneRound = (roundIndex: number): Promise<boolean> => {
         return new Promise(resolve => {
@@ -204,12 +231,67 @@ const useGameStore = create<GameStore>((set, get) => {
           }
 
           totalCombo++;
-          const roundScore = calculateScore(matches, totalCombo - 1);
-          totalScore += roundScore;
+          localComboSinceSwitch++;
+
+          let roundScore = calculateScore(matches, totalCombo - 1);
           allMatches = [...allMatches, ...matches];
 
+          const allMatchedPositions: Position[] = [];
+          for (const match of matches) {
+            for (const pos of match.positions) {
+              allMatchedPositions.push(pos);
+            }
+          }
+
+          const { extraLoading, matchedOnTracks, trackChains } = resolveTrackRouting(
+            allMatchedPositions,
+            currentBoard,
+            currentSwitches
+          );
+
+          allTrackChains = [...allTrackChains, ...trackChains];
+
+          let roundBoostBonus = 0;
+          for (const pos of matchedOnTracks) {
+            const mult = getBoostMultiplier(currentBoosts, pos.row, pos.col);
+            if (mult > 1) {
+              roundBoostBonus += 20 * (mult - 1);
+            }
+          }
+          roundScore += roundBoostBonus;
+          totalScore += roundScore;
+
+          for (const [candyType, count] of Object.entries(extraLoading)) {
+            let finalCount = count;
+            for (const pos of matchedOnTracks) {
+              const mult = getBoostMultiplier(currentBoosts, pos.row, pos.col);
+              const candy = currentBoard[pos.row]?.[pos.col];
+              if (candy && !candy.isSpecial && candy.type === candyType) {
+                finalCount += count * (mult - 1);
+              }
+            }
+            totalExtraLoading[candyType] = (totalExtraLoading[candyType] || 0) + finalCount;
+          }
+
+          currentBoosts = updateTrackBoosts(
+            currentBoosts,
+            matchedOnTracks,
+            currentBoard,
+            currentSwitches
+          );
+
+          if (localComboSinceSwitch >= SWITCH_TRIGGER_COMBO) {
+            currentSwitches = toggleSwitchesAfterCombo(currentSwitches);
+            localComboSinceSwitch = 0;
+          }
+
           currentBoard = markMatched(currentBoard, matches);
-          set({ board: currentBoard });
+          set({
+            board: currentBoard,
+            switchStates: currentSwitches,
+            trackBoosts: currentBoosts,
+            activeTrackChains: trackChains,
+          });
 
           setTimeout(() => {
             currentBoard = removeMatched(currentBoard);
@@ -225,7 +307,7 @@ const useGameStore = create<GameStore>((set, get) => {
               }
             }
 
-            set({ board: currentBoard });
+            set({ board: currentBoard, activeTrackChains: [] });
             resolve(true);
           }, 300);
         });
@@ -240,16 +322,42 @@ const useGameStore = create<GameStore>((set, get) => {
         }
 
         const candyCounts = countClearedCandies(allMatches);
-        const { train: newTrain } = loadCandiesToTrain(get().train, candyCounts);
+        const boostCounts: Record<string, number> = {};
+        const boostBonus = calculateBoostBonus(currentBoosts);
+
+        if (boostBonus > 0) {
+          for (const boost of currentBoosts) {
+            if (boost.active) {
+              const [r, c] = boost.key.split(',').map(Number);
+              const { extraLoading } = resolveTrackRouting(
+                [{ row: r, col: c }],
+                get().board,
+                currentSwitches
+              );
+              for (const [candyType, count] of Object.entries(extraLoading)) {
+                boostCounts[candyType] = (boostCounts[candyType] || 0) + count * 2;
+              }
+            }
+          }
+          totalScore += boostBonus * 25;
+        }
+
+        const { train: loadedTrain } = loadCandiesToTrain(get().train, candyCounts);
+        const { train: extraTrain } = loadCandiesToTrain(loadedTrain, totalExtraLoading as any);
+        const { train: finalTrain } = loadCandiesToTrain(extraTrain, boostCounts as any);
 
         const newMaxCombo = Math.max(get().maxCombo, totalCombo);
 
         set(state => ({
-          train: newTrain,
+          train: finalTrain,
           score: state.score + totalScore,
           combo: totalCombo,
           maxCombo: newMaxCombo,
           isAnimating: false,
+          switchStates: currentSwitches,
+          trackBoosts: currentBoosts,
+          comboSinceLastSwitch: localComboSinceSwitch,
+          activeTrackChains: [],
         }));
 
         get().persist();
@@ -323,6 +431,10 @@ const useGameStore = create<GameStore>((set, get) => {
         moves: GAME_CONFIG.INITIAL_MOVES,
         combo: 0,
         maxCombo: 0,
+        switchStates: initSwitchStates(),
+        trackBoosts: [],
+        activeTrackChains: [],
+        comboSinceLastSwitch: 0,
       }));
 
       get().persist();
@@ -348,6 +460,10 @@ const useGameStore = create<GameStore>((set, get) => {
         dispatchResult: null,
         profile,
         stats: loadStats(),
+        switchStates: initSwitchStates(),
+        trackBoosts: [],
+        activeTrackChains: [],
+        comboSinceLastSwitch: 0,
       });
 
       clearGameState();

@@ -151,5 +151,35 @@ export interface AllStats {
   reputations: StatsReputation[];
 }
 
+export type TrackDirection = 'up' | 'down' | 'left' | 'right';
+
+export type CellType = 'normal' | 'track' | 'switch';
+
+export interface TrackCellConfig {
+  row: number;
+  col: number;
+  direction: TrackDirection;
+  targetCandyType: CandyType;
+}
+
+export interface SwitchCellConfig {
+  row: number;
+  col: number;
+  directions: TrackDirection[];
+  targetCandyTypes: CandyType[];
+  currentDirectionIndex: number;
+}
+
+export interface TrackBoostState {
+  key: string;
+  count: number;
+  active: boolean;
+}
+
+export interface BoardLayout {
+  tracks: TrackCellConfig[];
+  switches: SwitchCellConfig[];
+}
+
 export const BOARD_SIZE = 8;
 export const BASIC_CANDY_TYPES: CandyType[] = ['strawberry', 'lemon', 'mint', 'blueberry', 'grape'];

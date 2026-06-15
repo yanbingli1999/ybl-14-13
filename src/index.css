@@ -59,6 +59,18 @@ h1, h2, h3, h4, h5, h6 {
       inset 0 2px 4px rgba(255, 255, 255, 0.3),
       inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   }
+
+  .animate-track-boost {
+    animation: trackBoost 1s ease-in-out infinite;
+  }
+
+  .animate-track-slide {
+    animation: trackSlide 0.4s ease-out;
+  }
+
+  .animate-switch-toggle {
+    animation: switchToggle 0.3s ease-in-out;
+  }
 }
 
 @keyframes bounceIn {
@@ -122,6 +134,157 @@ h1, h2, h3, h4, h5, h6 {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+@keyframes trackBoost {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(255, 217, 61, 0.4), inset 0 0 3px rgba(255, 217, 61, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 217, 61, 0.8), inset 0 0 8px rgba(255, 217, 61, 0.4);
+  }
+}
+
+@keyframes trackSlide {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-8px);
+  }
+}
+
+@keyframes switchToggle {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes trackChainGlow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.animate-track-chain-glow {
+  animation: trackChainGlow 0.6s ease-in-out infinite;
+}
+
+@keyframes trackPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.animate-track-pulse {
+  animation: trackPulse 0.4s ease-in-out infinite;
+}
+
+@keyframes candyExplode {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3) rotate(10deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.animate-candy-explode {
+  animation: candyExplode 0.3s ease-out forwards;
+}
+
+@keyframes bounceFast {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bounce-fast {
+  animation: bounceFast 0.3s ease-in-out infinite;
+}
+
+@keyframes specialSpin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(5deg) scale(1.02);
+  }
+  75% {
+    transform: rotate(-5deg) scale(0.98);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.animate-special-spin {
+  animation: specialSpin 2s ease-in-out infinite;
+}
+
+@keyframes specialGlow {
+  0%, 100% {
+    box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.4);
+  }
+}
+
+.animate-special-glow {
+  animation: specialGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes boostShine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-boost-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: boostShine 1s linear infinite;
 }
 
 ::-webkit-scrollbar {

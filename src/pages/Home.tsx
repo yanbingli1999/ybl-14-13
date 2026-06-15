@@ -86,6 +86,10 @@ export default function Home() {
             <li>• 匹配度高获得奖励，错装会被扣除罚金</li>
             <li>• 完成订单获得信誉，解锁更多车站</li>
             <li>• 4连消生成炸弹糖（范围消除），5连消生成彩虹糖（消除同色）</li>
+            <li className="pt-2 font-semibold text-amber-700">🛤️ 轨道格与道岔格</li>
+            <li>• <span className="text-blue-600 font-medium">轨道格</span>：带条纹底纹的格子，糖果在此被消除时会沿轨道方向额外滑入指定车厢</li>
+            <li>• <span className="text-orange-600 font-medium">道岔格</span>：虚线边框+🔀标记，连击后方向自动切换，利用连锁消除控制装载流向</li>
+            <li>• 轨道格连续承载同类糖果时触发⚡加速效果，额外增加装载量</li>
           </ul>
         </div>
 
