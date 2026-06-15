@@ -106,10 +106,10 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
-    switchStates: initSwitchStates(),
-    trackBoosts: [],
+    switchStates: persisted?.switchStates || initSwitchStates(),
+    trackBoosts: persisted?.trackBoosts || [],
     activeTrackChains: [],
-    comboSinceLastSwitch: 0,
+    comboSinceLastSwitch: persisted?.comboSinceLastSwitch ?? 0,
 
     persist: () => {
       const s = get();
@@ -124,6 +124,9 @@ const useGameStore = create<GameStore>((set, get) => {
         maxCombo: s.maxCombo,
         gamePhase: s.gamePhase,
         dispatchResult: s.dispatchResult,
+        switchStates: s.switchStates,
+        trackBoosts: s.trackBoosts,
+        comboSinceLastSwitch: s.comboSinceLastSwitch,
       });
     },
 
@@ -251,27 +254,36 @@ const useGameStore = create<GameStore>((set, get) => {
 
           allTrackChains = [...allTrackChains, ...trackChains];
 
+          const boostedExtraLoading: Record<string, number> = {};
           let roundBoostBonus = 0;
-          for (const pos of matchedOnTracks) {
-            const mult = getBoostMultiplier(currentBoosts, pos.row, pos.col);
-            if (mult > 1) {
-              roundBoostBonus += 20 * (mult - 1);
-            }
-          }
-          roundScore += roundBoostBonus;
-          totalScore += roundScore;
 
-          for (const [candyType, count] of Object.entries(extraLoading)) {
-            let finalCount = count;
-            for (const pos of matchedOnTracks) {
-              const mult = getBoostMultiplier(currentBoosts, pos.row, pos.col);
-              const candy = currentBoard[pos.row]?.[pos.col];
-              if (candy && !candy.isSpecial && candy.type === candyType) {
-                finalCount += count * (mult - 1);
-              }
+          for (const pos of matchedOnTracks) {
+            const candy = currentBoard[pos.row]?.[pos.col];
+            if (!candy || candy.isSpecial) continue;
+
+            const boostMult = getBoostMultiplier(currentBoosts, pos.row, pos.col);
+
+            const { extraLoading: posExtraLoading } = resolveTrackRouting(
+              [pos],
+              currentBoard,
+              currentSwitches
+            );
+
+            for (const [candyType, count] of Object.entries(posExtraLoading)) {
+              const boostedCount = count * boostMult;
+              boostedExtraLoading[candyType] = (boostedExtraLoading[candyType] || 0) + boostedCount;
             }
-            totalExtraLoading[candyType] = (totalExtraLoading[candyType] || 0) + finalCount;
+
+            if (boostMult > 1) {
+              roundBoostBonus += 25 * (boostMult - 1);
+            }
           }
+
+          for (const [candyType, count] of Object.entries(boostedExtraLoading)) {
+            totalExtraLoading[candyType] = (totalExtraLoading[candyType] || 0) + count;
+          }
+
+          totalScore += roundScore + roundBoostBonus;
 
           currentBoosts = updateTrackBoosts(
             currentBoosts,
@@ -322,29 +334,11 @@ const useGameStore = create<GameStore>((set, get) => {
         }
 
         const candyCounts = countClearedCandies(allMatches);
-        const boostCounts: Record<string, number> = {};
         const boostBonus = calculateBoostBonus(currentBoosts);
-
-        if (boostBonus > 0) {
-          for (const boost of currentBoosts) {
-            if (boost.active) {
-              const [r, c] = boost.key.split(',').map(Number);
-              const { extraLoading } = resolveTrackRouting(
-                [{ row: r, col: c }],
-                get().board,
-                currentSwitches
-              );
-              for (const [candyType, count] of Object.entries(extraLoading)) {
-                boostCounts[candyType] = (boostCounts[candyType] || 0) + count * 2;
-              }
-            }
-          }
-          totalScore += boostBonus * 25;
-        }
+        totalScore += boostBonus * 15;
 
         const { train: loadedTrain } = loadCandiesToTrain(get().train, candyCounts);
-        const { train: extraTrain } = loadCandiesToTrain(loadedTrain, totalExtraLoading as any);
-        const { train: finalTrain } = loadCandiesToTrain(extraTrain, boostCounts as any);
+        const { train: finalTrain } = loadCandiesToTrain(loadedTrain, totalExtraLoading as any);
 
         const newMaxCombo = Math.max(get().maxCombo, totalCombo);
 

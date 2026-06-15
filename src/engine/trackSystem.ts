@@ -224,43 +224,22 @@ export function updateTrackBoosts(
   const newBoosts: TrackBoostState[] = [];
   const processedKeys = new Set<string>();
 
-  const trackTypeMap = new Map<string, CandyType>();
-  for (const pos of matchedOnTracks) {
-    const candy = board[pos.row]?.[pos.col];
-    if (candy && !candy.isSpecial) {
-      trackTypeMap.set(`${pos.row},${pos.col}`, candy.type);
-    }
-  }
-
   for (const pos of matchedOnTracks) {
     const key = `${pos.row},${pos.col}`;
     processedKeys.add(key);
 
-    const currentType = trackTypeMap.get(key);
+    const candy = board[pos.row]?.[pos.col];
+    if (!candy || candy.isSpecial) continue;
+
+    const currentType = candy.type;
     const prevBoost = prevBoosts.find(b => b.key === key);
+    const prevType = prevBoost?.lastCandyType;
     const prevCount = prevBoost?.count || 0;
     const prevActive = prevBoost?.active || false;
 
-    const node = getNodeAt(pos.row, pos.col, switches);
-    if (!node || !currentType) continue;
-
     let consecutiveCount = 1;
 
-    if (prevBoost && prevCount > 0 && !prevActive) {
-      const nextPos = getNextPosition(pos.row, pos.col, node.direction);
-      if (nextPos) {
-        const nextKey = `${nextPos.row},${nextPos.col}`;
-        const nextType = trackTypeMap.get(nextKey);
-        const prevNextBoost = prevBoosts.find(b => b.key === nextKey);
-        const prevNextCount = prevNextBoost?.count || 0;
-
-        if (nextType === currentType || prevNextCount > 0) {
-          consecutiveCount = prevCount + 1;
-        }
-      } else {
-        consecutiveCount = prevCount + 1;
-      }
-    } else if (prevBoost && prevCount > 0) {
+    if (prevType && prevType === currentType) {
       consecutiveCount = prevCount + 1;
     }
 
@@ -270,22 +249,27 @@ export function updateTrackBoosts(
       key,
       count: consecutiveCount,
       active: isActive,
+      lastCandyType: currentType,
     });
   }
 
   for (const prev of prevBoosts) {
     if (!processedKeys.has(prev.key)) {
       if (prev.active) {
+        const newCount = Math.max(0, prev.count - 1);
         newBoosts.push({
           key: prev.key,
-          count: Math.max(0, prev.count - 2),
-          active: prev.count - 2 >= 3,
+          count: newCount,
+          active: newCount >= 3,
+          lastCandyType: prev.lastCandyType,
         });
       } else if (prev.count > 0) {
+        const newCount = prev.count - 1;
         newBoosts.push({
           key: prev.key,
-          count: prev.count - 1,
+          count: newCount,
           active: false,
+          lastCandyType: newCount > 0 ? prev.lastCandyType : null,
         });
       }
     }

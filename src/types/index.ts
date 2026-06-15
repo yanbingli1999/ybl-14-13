@@ -174,6 +174,7 @@ export interface TrackBoostState {
   key: string;
   count: number;
   active: boolean;
+  lastCandyType: CandyType | null;
 }
 
 export interface BoardLayout {

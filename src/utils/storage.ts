@@ -11,10 +11,13 @@ import {
   StationOrder,
   Position,
   DispatchResult,
+  SwitchCellConfig,
+  TrackBoostState,
 } from '@/types';
 import { STATIONS, INITIAL_TRAIN, GAME_CONFIG } from '@/data/config';
 import { createInitialBoard } from '@/engine/matchEngine';
 import { generateOrder } from '@/engine/contractSystem';
+import { initSwitchStates } from '@/engine/trackSystem';
 
 const STORAGE_KEYS = {
   PROFILE: 'candy-train-profile',
@@ -34,6 +37,9 @@ export interface PersistedGameState {
   maxCombo: number;
   gamePhase: 'playing' | 'dispatching' | 'result' | 'gameover';
   dispatchResult: DispatchResult | null;
+  switchStates: SwitchCellConfig[];
+  trackBoosts: TrackBoostState[];
+  comboSinceLastSwitch: number;
   timestamp: number;
 }
 
@@ -53,6 +59,15 @@ export function loadGameState(profile: PlayerProfile): PersistedGameState | null
       const parsed = JSON.parse(data) as PersistedGameState;
       const now = Date.now();
       if (now - parsed.timestamp < 24 * 60 * 60 * 1000) {
+        if (!parsed.switchStates) {
+          parsed.switchStates = initSwitchStates();
+        }
+        if (!parsed.trackBoosts) {
+          parsed.trackBoosts = [];
+        }
+        if (parsed.comboSinceLastSwitch === undefined) {
+          parsed.comboSinceLastSwitch = 0;
+        }
         return parsed;
       }
     }
@@ -72,6 +87,9 @@ export function loadGameState(profile: PlayerProfile): PersistedGameState | null
     maxCombo: 0,
     gamePhase: 'playing',
     dispatchResult: null,
+    switchStates: initSwitchStates(),
+    trackBoosts: [],
+    comboSinceLastSwitch: 0,
     timestamp: Date.now(),
   };
 }
